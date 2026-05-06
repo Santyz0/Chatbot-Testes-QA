@@ -5,7 +5,7 @@ const API_URL = "http://localhost:3001";
 
 function App() {
   const [message, setMessage] = useState("");
-  const [chat, setChat] = useState([]);
+  const [chat, setChat] = useState<{ role: string; text: string }[]>([]);
   const [sessionId, setSessionId] = useState(null);
   const [loading, setLoading] = useState(false);
 
