@@ -3,30 +3,60 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
+const Database = require("better-sqlite3");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🧠 Memória em memória (simples para aula)
-const sessions = {};
+// ─── Banco de dados ────────────────────────────────────────────────────────────
+const db = new Database("chat.db");
 
-// 🛠️ Tools do agente
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(id)
+  );
+`);
+
+// Helpers
+function getOrCreateSession(sessionId, firstUserMessage) {
+  const existing = db.prepare("SELECT * FROM sessions WHERE id = ?").get(sessionId);
+  if (existing) return existing;
+
+  const id = sessionId || uuidv4();
+  const title = firstUserMessage.substring(0, 30) + (firstUserMessage.length > 30 ? "..." : "");
+  db.prepare("INSERT INTO sessions (id, title, created_at) VALUES (?, ?, ?)").run(id, title, Date.now());
+  return db.prepare("SELECT * FROM sessions WHERE id = ?").get(id);
+}
+
+function getMessages(sessionId) {
+  return db.prepare("SELECT * FROM messages WHERE session_id = ? ORDER BY created_at ASC").all(sessionId);
+}
+
+function saveMessage(sessionId, role, content) {
+  db.prepare("INSERT INTO messages (session_id, role, content, created_at) VALUES (?, ?, ?, ?)").run(sessionId, role, content, Date.now());
+}
+
+// ─── Tools ────────────────────────────────────────────────────────────────────
 const tools = {
-  getTime: () => {
-    return new Date().toLocaleString();
-  },
-
+  getTime: () => new Date().toLocaleString(),
   calculate: (expression) => {
-    try {
-      return eval(expression).toString();
-    } catch {
-      return "Erro ao calcular";
-    }
+    try { return eval(expression).toString(); }
+    catch { return "Erro ao calcular"; }
   }
 };
 
-// 🎯 Prompt do agente
 const SYSTEM_PROMPT = `
 Você é um Agente de IA inteligente.
 
@@ -47,59 +77,80 @@ TOOL: calculate | 2+2
 Caso contrário, responda normalmente.
 `;
 
+// ─── Rotas ────────────────────────────────────────────────────────────────────
+
+// Lista todas as sessões (para carregar a sidebar)
+app.get("/sessions", (req, res) => {
+  const sessions = db.prepare("SELECT * FROM sessions ORDER BY created_at DESC").all();
+  res.json(sessions);
+});
+
+// Retorna as mensagens de uma sessão (para restaurar o chat ao clicar na sidebar)
+app.get("/sessions/:id/messages", (req, res) => {
+  const messages = getMessages(req.params.id);
+  res.json(messages);
+});
+
+// Deleta uma sessão e todas as suas mensagens
+app.delete("/sessions/:id", (req, res) => {
+  const { id } = req.params;
+  db.prepare("DELETE FROM messages WHERE session_id = ?").run(id);
+  db.prepare("DELETE FROM sessions WHERE id = ?").run(id);
+  res.json({ success: true });
+});
+
+// Renomeia uma sessão
+app.patch("/sessions/:id", (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
+  if (!title?.trim()) return res.status(400).json({ error: "Título inválido" });
+  db.prepare("UPDATE sessions SET title = ? WHERE id = ?").run(title.trim(), id);
+  res.json({ success: true });
+});
+
+// Envio de mensagem
 app.post("/chat", async (req, res) => {
   const { message, sessionId } = req.body;
 
-  const id = sessionId || uuidv4();
+  // Garante que a sessão existe no banco
+  const session = getOrCreateSession(sessionId || uuidv4(), message);
+  const id = session.id;
 
-  if (!sessions[id]) {
-    sessions[id] = [
-      { role: "system", content: SYSTEM_PROMPT }
-    ];
-  }
+  // Salva mensagem do usuário
+  saveMessage(id, "user", message);
 
-  sessions[id].push({ role: "user", content: message });
+  // Monta histórico para enviar à API (system prompt + mensagens salvas)
+  const history = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...getMessages(id).map(m => ({ role: m.role === "agent" ? "assistant" : m.role, content: m.content }))
+  ];
 
   try {
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.1-8b-instant",
-        messages: sessions[id]
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json"
-        }
-      }
+      { model: "llama-3.1-8b-instant", messages: history },
+      { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" } }
     );
 
     let reply = response.data.choices[0].message.content;
 
-    // 🛠️ Verifica se é chamada de tool
     if (reply.startsWith("TOOL:")) {
       const [, rest] = reply.split("TOOL:");
       const [toolName, arg] = rest.split("|").map(s => s.trim());
 
       if (tools[toolName]) {
         const result = tools[toolName](arg);
-
-        // adiciona resultado na memória
-        sessions[id].push({
-          role: "assistant",
-          content: `Resultado da tool ${toolName}: ${result}`
-        });
-
         reply = `🛠️ Resultado: ${result}`;
+        saveMessage(id, "assistant", reply);
       } else {
         reply = "Tool não encontrada";
+        saveMessage(id, "assistant", reply);
       }
     } else {
-      sessions[id].push({ role: "assistant", content: reply });
+      saveMessage(id, "assistant", reply);
     }
 
-    res.json({ reply, sessionId: id });
+    res.json({ reply, sessionId: id, sessionTitle: session.title });
 
   } catch (err) {
     console.error(err.response?.data || err.message);
