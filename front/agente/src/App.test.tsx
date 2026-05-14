@@ -48,7 +48,7 @@ describe('QA Frontend - Testes de Interface', () => {
     const input = screen.getByPlaceholderText('Adicione uma mensagem...');
     const btnEnviar = screen.getByText('Enviar');
 
-    await userEvent.type(input, 'Testando o frontend automatizado!');
+    await userEvent.type(input, 'Testando o frontend automatizado!', { delay: null });
     
     expect(btnEnviar).not.toBeDisabled();
   });
