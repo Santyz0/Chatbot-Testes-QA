@@ -1,4 +1,5 @@
 require("dotenv").config();
+const tools = require("./tools");
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
@@ -47,15 +48,6 @@ function getMessages(sessionId) {
 function saveMessage(sessionId, role, content) {
   db.prepare("INSERT INTO messages (session_id, role, content, created_at) VALUES (?, ?, ?, ?)").run(sessionId, role, content, Date.now());
 }
-
-// ─── Tools ────────────────────────────────────────────────────────────────────
-const tools = {
-  getTime: () => new Date().toLocaleString(),
-  calculate: (expression) => {
-    try { return eval(expression).toString(); }
-    catch { return "Erro ao calcular"; }
-  }
-};
 
 const SYSTEM_PROMPT = `
 Você é um Agente de IA inteligente.
