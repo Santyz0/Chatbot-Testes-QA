@@ -37,12 +37,14 @@ body {
   display: flex;
   flex-direction: column;
   padding: 20px;
+  overflow: hidden; 
+  min-height: 0;  
 }
 
 .new-chat-btn {
   width: 100%;
   padding: 12px;
-  background-color: #bd4bfe; /* O roxo da referência */
+  background-color: #bd4bfe; 
   color: #ffffff;
   border: none;
   border-radius: 8px;
