@@ -1,3 +1,4 @@
+/// <reference types="cypress" />
 describe('Fluxo Completo: Agente de IA', () => {
   
   it('Deve aguardar todo o carregamento inicial, criar um novo chat e enviar uma conta matemática', () => {
