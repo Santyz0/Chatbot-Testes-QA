@@ -27,7 +27,7 @@ Antes de iniciar, certifique-se de ter instalado em sua máquina:
 - Clonar o Repositório
 
     ```
-    git clone <url-do-seu-repositorio> <br>
+    git clone https://github.com/Santyz0/Chatbot-Testes-QA.git
     cd Chatbot-Testes-QA
     ```
 - Configurar e Rodar o Back-end
