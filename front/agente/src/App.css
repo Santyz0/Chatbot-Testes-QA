@@ -16,10 +16,10 @@ body {
   height: 100vh;
 }
 
-/* O Quadro agora usa flex-direction: row para ter lado a lado */
+
 .container {
   width: 100%;
-  max-width: 1000px; /* Aumentei um pouco para caber a sidebar com folga */
+  max-width: 1000px; 
   height: 85vh;
   background-color: #242424; 
   border-radius: 16px;

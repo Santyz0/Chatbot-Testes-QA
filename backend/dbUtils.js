@@ -1,6 +1,5 @@
 // dbUtils.js
 
-// Função que insere uma nova sessão no banco de dados
 function criarSessao(db, sessionId) {
   try {
     const stmt = db.prepare('INSERT INTO sessions (id) VALUES (?)');

@@ -20,7 +20,6 @@ describe('QA Frontend - Testes de Interface', () => {
   it('4. Deve renderizar a interface inicial perfeitamente', async () => {
     render(<App />);
     
-    // O 'await findBy' segura o teste até o useEffect inicial terminar de rodar!
     expect(await screen.findByText('+ Novo Chat')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Adicione uma mensagem...')).toBeInTheDocument();
     
@@ -42,7 +41,6 @@ describe('QA Frontend - Testes de Interface', () => {
 
     render(<App />);
     
-    // Espera a tela estabilizar do useEffect
     await screen.findByText('+ Novo Chat');
 
     const input = screen.getByPlaceholderText('Adicione uma mensagem...');

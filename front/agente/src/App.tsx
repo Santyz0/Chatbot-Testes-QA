@@ -12,8 +12,6 @@ function App() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-
-  // ── Estado de renomear ────────────────────────────────────────────────────────
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -40,7 +38,7 @@ function App() {
       });
   }, []);
 
-  // Foca o input assim que entrar no modo renomear
+
   useEffect(() => {
     if (renamingId) renameInputRef.current?.focus();
   }, [renamingId]);
@@ -77,12 +75,12 @@ function App() {
     const newTitle = renameValue.trim();
     setRenamingId(null);
 
-    if (!newTitle) return; // vazio: descarta
+    if (!newTitle) return; 
 
-    // Atualiza localmente imediatamente
+    
     setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: newTitle } : s));
 
-    // Só bate no banco se a sessão já foi persistida
+   
     const target = sessions.find(s => s.id === sessionId);
     const isPersisted = target?.messages.some(m => m.role === "agent") || target?.loaded === false;
     if (isPersisted) {
